@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//ibatis.apache.org//DTD Mapper 3.0//EN"
+        "http://ibatis.apache.org/dtd/ibatis-3-mapper.dtd">
+<mapper namespace="com.lsj.test.dao.StaticDataMapper">
+
+    <!--bean对象跟表的映射，结果集resultMap-->
+    <resultMap id="staticDatasMap" type="com.lsj.test.bean.StaticDataBean">
+        <id column="data_id" property="dataId"  jdbcType="VARCHAR"></id>
+        <result column="data_type" property="dataType" jdbcType="VARCHAR" />
+        <result column="data_value" property="dataValue" jdbcType="VARCHAR" />
+        <result column="ext1" property="ext1" jdbcType="VARCHAR" />
+    </resultMap>
+
+    <!--查询语句需要返回resultMap，即bean对象跟表的映射关系-->
+    <select id="selectByType" resultMap="staticDatasMap">
+        select * from STATIC_DATAS where data_type =#{1}
+    </select>
+
+    <!--当表有主键且主键有自增功能时，可以使用useGeneratedKeys,就可以自动插入主键，不需要我们去操作主键字段-->
+    <!--#{dataType} 对应对象的字段，这是一个变量-->
+    <insert id="insertStaticData" useGeneratedKeys="true">
+        insert into STATIC_DATAS(data_type,data_value,ext1) values(#{dataType},#{dataValue},#{ext1});
+    </insert>
+</mapper>
