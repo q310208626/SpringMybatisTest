@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE generatorConfiguration
+        PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+        "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+
+<generatorConfiguration>
+    <!--获取外部文件的properties-->
+    <properties resource="mybatis.properties"></properties>
+
+    <context id="my" targetRuntime="MyBatis3">
+
+        <!--这个是自动生成注释的配置,可以自己写一个自动写注释的类-->
+        <commentGenerator>
+            <property name="suppressDate" value="false" />
+            <property name="suppressAllComments" value="true" />
+        </commentGenerator>
+
+        <!-- 数据库连接信息 -->
+        <jdbcConnection driverClass="${mysql.driverClass}"
+                        connectionURL="${mysql.url}"
+                        userId="${mysql.username}"
+                        password="${mysql.password}" />
+
+        <!-- java数据类型与数据库类型映射,非必须 -->
+        <javaTypeResolver>
+            <property name="" value=""/>
+        </javaTypeResolver>
+
+        <!-- javaModel生成路径，对应bean的生成路径-->
+        <javaModelGenerator targetPackage="com.lsj.test.bean"
+                            targetProject="src/main/java">
+            <property name="enableSubPackages" value="true" />
+            <property name="trimStrings" value="true" />
+        </javaModelGenerator>
+
+        <!-- mapper.xml文件生成路径 -->
+        <sqlMapGenerator targetPackage="com.lsj.test.mapper"
+                         targetProject="src/main/java">
+            <property name="enableSubPackages" value="true" />
+        </sqlMapGenerator>
+
+
+        <!--dao文件的生成路径-->
+        <!--
+            type="ANNOTATEDMAPPER",生成基于注解的Mapper对象
+            type="XMLMAPPER",生成基于XML文件的Mapper对象
+            type="MIXEDMAPPER",生成上面两者都有的Mapper对象
+         -->
+        <javaClientGenerator targetPackage="com.lsj.test.dao"
+                             targetProject="src/main/java" type="XMLMAPPER">
+            <property name="enableSubPackages" value="true" />
+        </javaClientGenerator>
+
+        <!-- 目标表，如果有多个表就将此段拷贝分别配置-->
+        <!-- 选择哪个table自动生成bean.dao.mapper 可进行以下设置 -->
+        <!--tableName指定生成那个表，domainObjectName设置生成的bean的名称-->
+        <!--Example相当于一个扩展性很高的dao类，它允许我们自己在代码中拼装sql
+        ，这是这个插件能对所有表进行映射的主要原因，拼装sql还是得我们自己手动拼装-->
+        <table tableName="static_datas" domainObjectName="StaticDataPluginBean"
+               enableCountByExample="true"
+               enableUpdateByExample="false"
+               enableDeleteByExample="false"
+               enableSelectByExample="true"
+               selectByExampleQueryId="false">
+        </table>
+    </context>
+</generatorConfiguration>

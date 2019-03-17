@@ -1,10 +1,15 @@
 import com.lsj.test.bean.StaticDataBean;
+import com.lsj.test.bean.StaticDataPluginBean;
+import com.lsj.test.bean.StaticDataPluginBeanExample;
 import com.lsj.test.dao.StaticDataMapper;
+import com.lsj.test.dao.StaticDataPluginBeanMapper;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
+import java.util.List;
 
 /**
  * @descriptions:
@@ -18,6 +23,10 @@ public class SpringTest {
 
     @Autowired
     StaticDataMapper staticDataMapper;
+
+    @Autowired
+    StaticDataPluginBeanMapper staticDataPluginBeanMapper;
+
     @Test
     public void test(){
         StaticDataBean staticDataBean = new StaticDataBean();
@@ -27,5 +36,16 @@ public class SpringTest {
         
         StaticDataBean[] staticDataBeans = staticDataMapper.selectByType("ABC");
         System.out.println(staticDataBeans.length);
+    }
+
+    @Test
+    public void testPlugin(){
+        StaticDataPluginBeanExample staticDataPluginBeanExample = new StaticDataPluginBeanExample();
+        StaticDataPluginBeanExample.Criteria criteria = staticDataPluginBeanExample.createCriteria();
+        criteria.andDataTypeEqualTo("ABC");
+        List<StaticDataPluginBean> staticDataPluginBeans = staticDataPluginBeanMapper.selectByExample(staticDataPluginBeanExample);
+        staticDataPluginBeans.stream().forEach(x->{
+            System.out.println(x.getDataValue());
+        });
     }
 }
