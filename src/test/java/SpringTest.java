@@ -1,6 +1,8 @@
 import com.lsj.test.bean.StaticDataBean;
 import com.lsj.test.bean.StaticDataPluginBean;
 import com.lsj.test.bean.StaticDataPluginBeanExample;
+import com.lsj.test.cache.impl.RedisFactory;
+import com.lsj.test.cache.impl.StaticDataPluginCache;
 import com.lsj.test.dao.StaticDataMapper;
 import com.lsj.test.dao.StaticDataPluginBeanMapper;
 import org.junit.Test;
@@ -27,6 +29,8 @@ public class SpringTest {
     @Autowired
     StaticDataPluginBeanMapper staticDataPluginBeanMapper;
 
+    @Autowired
+    StaticDataPluginCache staticDataPluginCache;
     @Test
     public void test(){
         StaticDataBean staticDataBean = new StaticDataBean();
@@ -47,5 +51,18 @@ public class SpringTest {
         staticDataPluginBeans.stream().forEach(x->{
             System.out.println(x.getDataValue());
         });
+    }
+
+    @Test
+    public void cacheTest(){
+        try {
+            Class.forName(RedisFactory.class.getName());
+            StaticDataPluginBean staticDataPluginBean = (StaticDataPluginBean) staticDataPluginCache.getDataByKey("ABCD");
+            if(null != staticDataPluginBean){
+                System.out.println("dataId:"+staticDataPluginBean.getDataId()+"\r\ndataType:"+staticDataPluginBean.getDataType()+"\r\ndataValue:"+staticDataPluginBean.getDataValue());
+            }
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<redisFactory>
+    <!--redis 数据源 提供了redis的ip 以及 验证密码-->
+    <source>
+        <server>47.52.69.145</server>
+        <password>redislinshaojia@123</password>
+    </source>
+    <!--需要加载缓存的缓存类-->
+    <tables>
+        <table value="com.lsj.test.cache.impl.StaticDataPluginCache"></table>
+    </tables>
+</redisFactory>
