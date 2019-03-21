@@ -4,7 +4,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
-public interface ICache {
+public interface ICache<T> {
     public void init();
 
     // 要返回作为缓存的数据，用List<Map>方式缓存
@@ -14,5 +14,5 @@ public interface ICache {
     public String specialKey();
 
     // 通过key的value获取缓存数据
-    public Object getDataByKey(String keyValue);
+    public T getDataByKey(String keyValue);
 }

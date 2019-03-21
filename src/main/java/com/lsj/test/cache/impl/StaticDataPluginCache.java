@@ -40,7 +40,7 @@ public class StaticDataPluginCache extends AbstractCache<StaticDataPluginBean> {
     }
 
     @Override
-    public Object getDataIfNoInCache(String key) {
+    public StaticDataPluginBean getDataIfNoInCache(String key) {
         StaticDataPluginBeanExample staticDataPluginBeanExample = new StaticDataPluginBeanExample();
         StaticDataPluginBeanExample.Criteria criteria =  staticDataPluginBeanExample.createCriteria();
         criteria.andDataTypeEqualTo(key);

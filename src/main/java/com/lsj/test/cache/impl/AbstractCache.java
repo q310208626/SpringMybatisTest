@@ -124,7 +124,7 @@ public abstract class AbstractCache<T> implements ICache {
     }
 
     @Override
-    public Object getDataByKey(String key) {
+    public T getDataByKey(String key) {
         Jedis jedis = redisFactory.getJedisClient();
         Gson gson = new Gson();
 
@@ -137,13 +137,13 @@ public abstract class AbstractCache<T> implements ICache {
 
         // 获取不到缓存需要查询数据库，这个由子类实现
         if(null == t){
-            t = (T) getDataIfNoInCache(key);
+            t = getDataIfNoInCache(key);
         }
         return t;
     }
 
     // 缓存获取不到数据时，查数据库，这个有子类实现
-    public abstract Object getDataIfNoInCache(String keyValue);
+    public abstract T getDataIfNoInCache(String keyValue);
 
     // 提供字段对String转成对应类型的功能,在通过invoke时需要用到对应的参数类型，不然会报错
     private Object objectConvertType(Object object,Type type){
