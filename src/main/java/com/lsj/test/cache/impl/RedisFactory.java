@@ -1,24 +1,26 @@
 package com.lsj.test.cache.impl;
 
-import com.google.gson.Gson;
 import com.lsj.test.cache.interfaces.ICache;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.xml.sax.InputSource;
-import redis.clients.jedis.Jedis;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * @descriptions:
@@ -34,9 +36,11 @@ public class RedisFactory{
     // 需要缓存的缓存类，一个类对应一个表
     private static List<Class> cacheList;
 
-    @Autowired
+
     private static ApplicationContext context;
-    private static Jedis jedisClient;
+    private static JedisConnectionFactory jedisConnectionFactory;
+    private static RedisTemplate redisTemplate;
+    private static RedisConnection redisConnection;
     static{
         try {
             // 初始化属性
@@ -44,7 +48,7 @@ public class RedisFactory{
             // 加载配置文件
             loadRedisConfig();
             // 初始化redis属性
-            initAfterLocalConfig();
+            initAfterLoadConfig();
             // 缓存数据到redis
             cacheDatas();
         } catch (Exception e) {
@@ -52,49 +56,59 @@ public class RedisFactory{
         }
     }
 
-    public static void initAfterLocalConfig() throws Exception{
-        if(!StringUtils.isEmpty(redisServer) && !StringUtils.isEmpty(redisPassword)){
-            jedisClient = new Jedis(redisServer);
-            jedisClient.auth(redisPassword);
+    public static void initAfterLoadConfig() throws Exception{
 
-            try{
-                // 测试redis连通性
-                jedisClient.ping();
-            }catch (Exception e){
-                System.out.println("Redis服务不通["+redisServer+"]");
-            }
-        }else{
-            throw new Exception("redisServer 或 redisPassword 为空");
-        }
     }
 
     public static void init() throws Exception{
         context = new ClassPathXmlApplicationContext("applicationContext.xml");
+        jedisConnectionFactory = (JedisConnectionFactory) context.getBean("jedisConnectionFactory");
+        redisTemplate = (RedisTemplate) context.getBean("redisTemplate");
         cacheList = new ArrayList<Class>();
     }
 
     public static void cacheDatas() {
 
-        // 用以Map与String间的转换
-        Gson gson = new Gson();
+
         // 循环获取缓存类，通过ICache共有方法获取数据库数据
         for (Class cacheClass : cacheList) {
-            try {
+            try{
+                Class beanClass = null;
+
+                // 获取cache实现类的泛型,以获取到bean中的数据
+                Type returnType = cacheClass.getGenericSuperclass();
+                if (returnType instanceof ParameterizedType){
+                    returnType = ((ParameterizedType) returnType).getActualTypeArguments()[0];
+                    beanClass = (Class<?>) returnType;
+                }
+
+                // 获取要缓存的数据
                 Object object = context.getBean(cacheClass.getSimpleName());
                 Method getDataMapsMethod = cacheClass.getMethod("getDataMaps");
-
-                List<Map<String,String>> dataMaps = (List<Map<String, String>>) getDataMapsMethod.invoke(object);
+                List beans = (List) getDataMapsMethod.invoke(object);
 
                 // 获取要作为redis map 中key的字段
                 Method specialKeyMethod = cacheClass.getMethod("specialKey");
                 String keyField = String.valueOf(specialKeyMethod.invoke(object));
 
-                for (Map<String, String> dataMap : dataMaps) {
-                    String key = dataMap.get(keyField);
-                    // 由于Map实现了序列化接口，直接toString()作为value
-                    if(!StringUtils.isEmpty(key)){
-                        jedisClient.hset(cacheClass.getName(),key,gson.toJson(dataMap));
+                if( null != beanClass){
+                    // 获取作为key的字段的get方法
+                    String getSpecialValueMethodName = "get"+keyField.replace(keyField.substring(0,1),keyField.substring(0,1).toUpperCase());
+                    Method getSpecialValueMethod = beanClass.getMethod(getSpecialValueMethodName);
+
+                    redisConnection = jedisConnectionFactory.getConnection();
+                    // 循环缓存数据
+                    for (Object bean  : beans) {
+                        // 获取指定字段的值作为key
+                        String specialValue = String.valueOf(getSpecialValueMethod.invoke(bean));
+                        if(!StringUtils.isEmpty(specialValue)){
+                            // 获取序列化bean对象
+                            byte[] beanByte = redisTemplate.getHashValueSerializer().serialize(bean);
+                            redisConnection.hSet(cacheClass.getName().getBytes(),specialValue.getBytes(),beanByte);
+                        }
                     }
+
+
                 }
 
             } catch (NoSuchMethodException e) {
@@ -103,6 +117,10 @@ public class RedisFactory{
                 e.printStackTrace();
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
+            }finally {
+                if (null == redisConnection){
+                    redisConnection.close();
+                }
             }
         }
     }
@@ -115,10 +133,10 @@ public class RedisFactory{
             Document document = saxReader.read(redisInputSource);
             Element rootElement = document.getRootElement();
 
-            // 初始化redisSource
-            Element sourceElement = rootElement.element("source");
-            redisServer = sourceElement.element("server").getStringValue();
-            redisPassword = sourceElement.element("password").getStringValue();
+//            // 初始化redisSource
+//            Element sourceElement = rootElement.element("source");
+//            redisServer = sourceElement.element("server").getStringValue();
+//            redisPassword = sourceElement.element("password").getStringValue();
 
             //初始化需要缓存的ICache对象
             Element tableElement = rootElement.element("tables");
@@ -144,7 +162,15 @@ public class RedisFactory{
         }
     }
 
-    public Jedis getJedisClient(){
-        return jedisClient;
+    public RedisConnection getRedisConnection(){
+        redisConnection = jedisConnectionFactory.getConnection();
+        return redisConnection;
+    }
+
+    public RedisTemplate getRedisTemplate(){
+        if( null == redisTemplate){
+            redisTemplate = (RedisTemplate) context.getBean("redisTemplate");
+        }
+        return redisTemplate;
     }
 }

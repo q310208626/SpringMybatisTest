@@ -29,9 +29,9 @@ public class StaticDataPluginCache extends AbstractCache<StaticDataPluginBean> {
     }
 
     @Override
-    public List<Map> getDataMaps() {
+    public List<StaticDataPluginBean> getDataMaps() {
         List<StaticDataPluginBean> staticDataPluginBeans = staticDataPluginBeanMapper.selectByExample(new StaticDataPluginBeanExample());
-        return beansToMaps(staticDataPluginBeans);
+        return staticDataPluginBeans;
     }
 
     @Override

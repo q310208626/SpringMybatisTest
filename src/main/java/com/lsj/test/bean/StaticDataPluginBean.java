@@ -1,6 +1,8 @@
 package com.lsj.test.bean;
 
-public class StaticDataPluginBean {
+import java.io.Serializable;
+
+public class StaticDataPluginBean implements Serializable {
     private Integer dataId;
 
     private String dataType;
