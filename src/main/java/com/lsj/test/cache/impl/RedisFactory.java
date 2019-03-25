@@ -14,6 +14,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.xml.sax.InputSource;
 
+import java.beans.IntrospectionException;
+import java.beans.PropertyDescriptor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -82,6 +84,7 @@ public class RedisFactory{
                     beanClass = (Class<?>) returnType;
                 }
 
+
                 // 获取要缓存的数据
                 Object object = context.getBean(cacheClass.getSimpleName());
                 Method getDataMapsMethod = cacheClass.getMethod("getDataMaps");
@@ -93,8 +96,8 @@ public class RedisFactory{
 
                 if( null != beanClass){
                     // 获取作为key的字段的get方法
-                    String getSpecialValueMethodName = "get"+keyField.replace(keyField.substring(0,1),keyField.substring(0,1).toUpperCase());
-                    Method getSpecialValueMethod = beanClass.getMethod(getSpecialValueMethodName);
+                    PropertyDescriptor propertyDescriptor = new PropertyDescriptor(keyField,beanClass);
+                    Method getSpecialValueMethod = propertyDescriptor.getReadMethod();
 
                     redisConnection = jedisConnectionFactory.getConnection();
                     // 循环缓存数据
@@ -117,7 +120,10 @@ public class RedisFactory{
                 e.printStackTrace();
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
-            }finally {
+            } catch (IntrospectionException e) {
+                System.out.println(cacheClass+"::specialKey 返回的字段在Bean中不存在");
+                e.printStackTrace();
+            } finally {
                 if (null == redisConnection){
                     redisConnection.close();
                 }
