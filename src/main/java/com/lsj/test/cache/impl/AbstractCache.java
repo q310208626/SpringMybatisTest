@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 /**
  * @descriptions: 缓存抽象类
@@ -40,6 +39,4 @@ public abstract class AbstractCache<T> implements ICache {
 
     // 缓存获取不到数据时，查数据库，这个有子类实现
     public abstract T getDataIfNoInCache(String keyValue);
-
-
 }

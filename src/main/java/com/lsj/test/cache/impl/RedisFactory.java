@@ -124,7 +124,7 @@ public class RedisFactory{
                 System.out.println(cacheClass+"::specialKey 返回的字段在Bean中不存在");
                 e.printStackTrace();
             } finally {
-                if (null == redisConnection){
+                if (null != redisConnection){
                     redisConnection.close();
                 }
             }
