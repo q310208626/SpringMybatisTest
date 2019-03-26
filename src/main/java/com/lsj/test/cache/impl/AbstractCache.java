@@ -4,9 +4,11 @@ import com.google.gson.Gson;
 import com.lsj.test.cache.interfaces.ICache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import redis.clients.jedis.Jedis;
 
+import java.beans.BeanDescriptor;
+import java.beans.IntrospectionException;
+import java.beans.PropertyDescriptor;
 import java.lang.reflect.*;
 import java.util.*;
 
@@ -23,7 +25,7 @@ public abstract class AbstractCache<T> implements ICache {
     RedisFactory redisFactory;
 
     // bean 转换成 Map
-    public Map beanToMap(T t) {
+    public Map beanToMap(T t){
         Map<String,String> map = new HashMap();
         ;
         // 获取实现类的泛型，不是子类，是子类要操作的bean对象
@@ -31,8 +33,10 @@ public abstract class AbstractCache<T> implements ICache {
         if (type instanceof ParameterizedType) {
             Type paramType = ((ParameterizedType) type).getActualTypeArguments()[0];
             Class<T> clazz = (Class) paramType;
-            Field[] fields = clazz.getDeclaredFields();
 
+            // 获取bean所有字段
+            BeanDescriptor cacheBeanDescriptor = new BeanDescriptor(clazz);
+            Field[] fields = cacheBeanDescriptor.getBeanClass().getDeclaredFields();
             List<Field> fieldList = Arrays.asList(fields);
             Iterator<Field> fieldIterator = fieldList.iterator();
 
@@ -40,18 +44,26 @@ public abstract class AbstractCache<T> implements ICache {
             while (fieldIterator.hasNext()) {
                 Field field = fieldIterator.next();
                 String fieldName = field.getName();
-                String getMethodName = "get" + fieldName.substring(0, 1).toUpperCase()
-                        + fieldName.substring(1, fieldName.length());
+                PropertyDescriptor fieldDescriptor = null;
                 try {
-                    Method getMethod = clazz.getMethod(getMethodName);
-                    String fieldValueString = String.valueOf(getMethod.invoke(t));
+                    fieldDescriptor = new PropertyDescriptor(fieldName,clazz);
+                } catch (IntrospectionException e) {
+                    System.out.println("类["+clazz+"]获取不到字段("+fieldName+")");
+                }
+
+                // 获取字段的get方法
+                Method getFieldMethod = fieldDescriptor.getReadMethod();
+                if(!getFieldMethod.isAccessible()){
+                    continue;
+                }
+
+                try {
+                    String fieldValueString = String.valueOf(getFieldMethod.invoke(t));
                     map.put(field.getName(), fieldValueString);
-                } catch (NoSuchMethodException e) {
-                    System.out.println("没有[" + getMethodName + "]该方法");
-                } catch (IllegalAccessException e) {
-                    System.out.println("无法访问[" + getMethodName + "]方法");
+                }catch (IllegalAccessException e) {
+                    System.out.println("无法访问[" + getFieldMethod.getName()+ "]方法");
                 } catch (InvocationTargetException e) {
-                    System.out.println("调用方法出错[" + getMethodName + "]");
+                    System.out.println("调用方法出错[" + getFieldMethod.getName()+ "]");
                 }
             }
 
@@ -76,30 +88,28 @@ public abstract class AbstractCache<T> implements ICache {
     public T mapToBean(Map<String,String> beanMap){
         T t = null;
         if (null != beanMap && beanMap.size() > 0) {
+
             // 获取实现类的泛型
             Type type = this.getClass().getGenericSuperclass();
             if (type instanceof ParameterizedType) {
                 Type paramType = ((ParameterizedType) type).getActualTypeArguments()[0];
                 Class<T> clazz = (Class) paramType;
+
+                // 创建类实例，映射mpa属性
                 try {
                     t = clazz.newInstance();
                     // 扫描map的字段
                     for (String x : beanMap.keySet()) {
                         try {
-                            Field field = clazz.getDeclaredField(x);
-                            String getMethodName = "set" + fieldConvToMethod(field.getName());
-
-                            Type setterParamType = field.getType();
-                            Method getMethod = clazz.getMethod(getMethodName, (Class) setterParamType);
-                            getMethod.invoke(t, objectConvertType(beanMap.get(x), setterParamType));
-                        } catch (NoSuchFieldException e) {
-                            System.out.println("没有该字段[" + x + "],跳过处理");
-                        } catch (NoSuchMethodException e) {
-                            System.out.println("没有该字段的set方法[" + x + "],跳过处理");
-                        } catch (IllegalAccessException e) {
+                            PropertyDescriptor propertyDescriptor = new PropertyDescriptor(x,clazz);
+                            Method setMethod = propertyDescriptor.getWriteMethod();
+                            setMethod.invoke(t, objectConvertType(beanMap.get(x), propertyDescriptor.getPropertyType()));
+                        }catch (IllegalAccessException e) {
                             e.printStackTrace();
                         } catch (InvocationTargetException e) {
                             e.printStackTrace();
+                        } catch (IntrospectionException e) {
+                            System.out.println("class["+clazz.getSimpleName()+"]没有这个字段"+x);
                         }
                     }
 
@@ -112,15 +122,6 @@ public abstract class AbstractCache<T> implements ICache {
         }
 
         return t;
-    }
-
-    // field--->Field
-    public String fieldConvToMethod(String field){
-        StringBuffer methodName = new StringBuffer(field);
-        if(!StringUtils.isEmpty(field) && field.length() > 0){
-            methodName.replace(0,1,field.substring(0,1).toUpperCase());
-        }
-        return methodName.toString();
     }
 
     @Override
